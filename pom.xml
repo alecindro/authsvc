@@ -18,6 +18,12 @@
     </plugins>
     </build>
     <dependencies>
+    	<dependency>
+  		<groupId>javax</groupId>
+  		<artifactId>javaee-api</artifactId>
+  		<version>7.0</version>
+  		<scope>provided</scope>
+  	</dependency>
     <dependency>
   <groupId>org.apache.shiro</groupId>
   <artifactId>shiro-core</artifactId>
@@ -49,5 +55,11 @@
     <artifactId>slf4j-simple</artifactId>
     <version>1.6.1</version>
 </dependency>
+    	<dependency>
+    		<groupId>cuidebemsvc</groupId>
+    		<artifactId>cuidebemsvc</artifactId>
+    		<version>0.0.1-SNAPSHOT</version>
+    		<scope>provided</scope>
+    	</dependency>
     </dependencies>
 </project>

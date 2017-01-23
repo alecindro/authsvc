@@ -10,8 +10,8 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.TimeZone;
 
+import javax.inject.Inject;
 import javax.sql.DataSource;
-
 
 import org.apache.shiro.authc.AccountException;
 import org.apache.shiro.authc.AuthenticationException;
@@ -26,6 +26,7 @@ import org.apache.shiro.web.filter.authc.FormAuthenticationFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import br.com.cuidebem.Emailsvc;
 import br.com.security.quali.UtilSecurity;
 import br.com.security.quali.authc.BlockedException;
 import br.com.security.quali.authc.LogAuthException;
@@ -52,6 +53,9 @@ public class JdbcRealmBlock extends JdbcRealm {
 	private Integer numberRetrieValue = 10;
 	private Integer failLoginLimit;	
 	private FormAuthenticationFilter formAuthenticationFilter;
+	
+	
+	private Emailsvc emailSVC;
 	
 
 	public Integer getFailLoginLimit() {
@@ -93,12 +97,21 @@ public class JdbcRealmBlock extends JdbcRealm {
 			Object[] result = getPasswordForUser(conn, username);
 			String password = (String) result[0];
 			boolean blocked = (Boolean) result[1];
+			Object activation = result[2];
 
 			if (password == null) {
 				throw new UnknownAccountException("No account found for user ["
 						+ username + "]");
 			}
+			if(activation == null){
+				emailSVC = javax.enterprise.inject.spi.CDI.current().select(Emailsvc.class).get();
+				emailSVC.confirmarEmail(username);
+				throw new BlockedException("Favor ativar a sua conta. Enviamos um novo email solicitando a ativação.");
+			}
+			
 			if (blocked) {
+				emailSVC = javax.enterprise.inject.spi.CDI.current().select(Emailsvc.class).get();
+				emailSVC.desbloquearEmail(username);
 				throw new BlockedException(getMsgLoginBlocked());
 			}
 
@@ -125,7 +138,7 @@ public class JdbcRealmBlock extends JdbcRealm {
 	private Object[] getPasswordForUser(Connection conn, String username)
 			throws SQLException {
 
-		Object[] result = new Object[2];
+		Object[] result = new Object[3];
 
 		PreparedStatement ps = null;
 		ResultSet rs = null;
@@ -150,7 +163,7 @@ public class JdbcRealmBlock extends JdbcRealm {
 
 				result[0] = rs.getString(1);
 				result[1] = rs.getBoolean(2);
-
+				result[2] = rs.getObject(3);
 				foundResult = true;
 			}
 		} finally {
