@@ -56,10 +56,9 @@
     <version>1.6.1</version>
 </dependency>
     	<dependency>
-    		<groupId>cuidebemsvc</groupId>
-    		<artifactId>cuidebemsvc</artifactId>
+    		<groupId>emailsvc</groupId>
+    		<artifactId>emailsvc</artifactId>
     		<version>0.0.1-SNAPSHOT</version>
-    		<scope>provided</scope>
     	</dependency>
     </dependencies>
 </project>
