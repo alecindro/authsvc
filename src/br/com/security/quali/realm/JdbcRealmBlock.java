@@ -50,13 +50,13 @@ public class JdbcRealmBlock extends JdbcRealm {
 	protected String sucessLoginQuery;
 	protected String updateLoginQuery;
 	protected String updatePasswordQuery;
+	protected String sucessUrlCuidador;
+	protected String sucessUrlresp;
 	private Integer numberRetrieValue = 10;
-	private Integer failLoginLimit;	
+	private Integer failLoginLimit;
 	private FormAuthenticationFilter formAuthenticationFilter;
-	
-	
+
 	private Emailsvc emailSVC;
-	
 
 	public Integer getFailLoginLimit() {
 		return failLoginLimit;
@@ -79,14 +79,12 @@ public class JdbcRealmBlock extends JdbcRealm {
 		return upToken.getUsername();
 	}
 
-	protected AuthenticationInfo doGetAuthenticationInfo(
-			AuthenticationToken token) throws AuthenticationException {
+	protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException {
 		String username = getUsername(token);
 
 		// Null username is invalid
 		if (username == null) {
-			throw new AccountException(
-					"Null usernames are not allowed by this realm.");
+			throw new AccountException("Null usernames are not allowed by this realm.");
 		}
 
 		Connection conn = null;
@@ -100,27 +98,24 @@ public class JdbcRealmBlock extends JdbcRealm {
 			Object activation = result[2];
 
 			if (password == null) {
-				throw new UnknownAccountException("No account found for user ["
-						+ username + "]");
+				throw new UnknownAccountException("No account found for user [" + username + "]");
 			}
-			if(activation == null){
+			if (activation == null) {
 				emailSVC = javax.enterprise.inject.spi.CDI.current().select(Emailsvc.class).get();
 				emailSVC.confirmarEmail(username);
 				throw new BlockedException("Favor ativar a sua conta. Enviamos um novo email solicitando a ativação.");
 			}
-			
+
 			if (blocked) {
 				emailSVC = javax.enterprise.inject.spi.CDI.current().select(Emailsvc.class).get();
 				emailSVC.desbloquearEmail(username);
 				throw new BlockedException(getMsgLoginBlocked());
 			}
 
-			info = new SimpleAuthenticationInfo(username,
-					password.toCharArray(), getName());
+			info = new SimpleAuthenticationInfo(username, password.toCharArray(), getName());
 
 		} catch (SQLException e) {
-			final String message = "There was a SQL error while authenticating user ["
-					+ username + "]";
+			final String message = "There was a SQL error while authenticating user [" + username + "]";
 			if (log.isErrorEnabled()) {
 				log.error(message, e);
 			}
@@ -135,10 +130,9 @@ public class JdbcRealmBlock extends JdbcRealm {
 	}
 
 	@SuppressWarnings("resource")
-	private Object[] getPasswordForUser(Connection conn, String username)
-			throws SQLException {
+	private Object[] getPasswordForUser(Connection conn, String username) throws SQLException {
 
-		Object[] result = new Object[3];
+		Object[] result = new Object[4];
 
 		PreparedStatement ps = null;
 		ResultSet rs = null;
@@ -157,13 +151,18 @@ public class JdbcRealmBlock extends JdbcRealm {
 				// Check to ensure only one row is processed
 				if (foundResult) {
 					throw new AuthenticationException(
-							"More than one user row found for user ["
-									+ username + "]. Usernames must be unique.");
+							"More than one user row found for user [" + username + "]. Usernames must be unique.");
 				}
 
 				result[0] = rs.getString(1);
 				result[1] = rs.getBoolean(2);
 				result[2] = rs.getObject(3);
+				result[3] = rs.getObject(4);
+				if ((int) result[3] == 2) {
+					formAuthenticationFilter.setSuccessUrl(sucessUrlCuidador);
+				} else {
+					formAuthenticationFilter.setSuccessUrl(sucessUrlresp);
+				}
 				foundResult = true;
 			}
 		} finally {
@@ -174,8 +173,7 @@ public class JdbcRealmBlock extends JdbcRealm {
 		return result;
 	}
 
-	private void blockUser(AuthenticationToken token, DataSource _dataSource)
-			throws BlockedException {
+	private void blockUser(AuthenticationToken token, DataSource _dataSource) throws BlockedException {
 		Connection conn = null;
 		PreparedStatement ps = null;
 		try {
@@ -204,21 +202,18 @@ public class JdbcRealmBlock extends JdbcRealm {
 		this.numberRetrieValue = numberRetrieValue;
 	}
 
-	public void logSucess(AuthenticationToken token, TimeZone timezone)
-			throws LogAuthException {
+	public void logSucess(AuthenticationToken token, TimeZone timezone) throws LogAuthException {
 		log(token, timezone, true);
 	}
 
-	public void logUnSucess(AuthenticationToken token, TimeZone timezone)
-			throws LogAuthException {
+	public void logUnSucess(AuthenticationToken token, TimeZone timezone) throws LogAuthException {
 		log(token, timezone, false);
 		if (excedLimit(token)) {
 			blockUser(token, dataSource);
 		}
 	}
 
-	private void log(AuthenticationToken token, TimeZone timezone,
-			boolean sucess) throws LogAuthException {
+	private void log(AuthenticationToken token, TimeZone timezone, boolean sucess) throws LogAuthException {
 		Connection conn = null;
 		PreparedStatement ps = null;
 		try {
@@ -239,8 +234,7 @@ public class JdbcRealmBlock extends JdbcRealm {
 		}
 	}
 
-	public boolean excedLimit(AuthenticationToken token)
-			throws LogAuthException {
+	public boolean excedLimit(AuthenticationToken token) throws LogAuthException {
 		Connection conn = null;
 		PreparedStatement ps = null;
 		ResultSet rs = null;
@@ -320,9 +314,9 @@ public class JdbcRealmBlock extends JdbcRealm {
 		}
 		return null;
 	}
-	
-	public boolean alterPassword(AuthenticationToken token,Integer limitDays) {
-		
+
+	public boolean alterPassword(AuthenticationToken token, Integer limitDays) {
+
 		Connection conn = null;
 		PreparedStatement ps = null;
 		ResultSet rs = null;
@@ -334,9 +328,9 @@ public class JdbcRealmBlock extends JdbcRealm {
 			rs = ps.executeQuery();
 			if (rs.next()) {
 				Calendar calendar = Calendar.getInstance();
-				calendar.add(Calendar.DAY_OF_YEAR, limitDays*-1);
+				calendar.add(Calendar.DAY_OF_YEAR, limitDays * -1);
 				Timestamp timeStamp = rs.getTimestamp(1);
-				if(calendar.getTime().compareTo(timeStamp)>0){
+				if (calendar.getTime().compareTo(timeStamp) > 0) {
 					return true;
 				}
 			}
@@ -350,14 +344,14 @@ public class JdbcRealmBlock extends JdbcRealm {
 		}
 		return false;
 	}
-	
-	public void updatePassword(String username,String password) throws PasswordException {
-		
+
+	public void updatePassword(String username, String password) throws PasswordException {
+
 		Connection conn = null;
 		PreparedStatement ps = null;
-		
+
 		try {
-			java.util.Date date= new java.util.Date();
+			java.util.Date date = new java.util.Date();
 			Timestamp time = new Timestamp(date.getTime());
 			conn = dataSource.getConnection();
 			isEqualLastPassword(username, password, conn);
@@ -367,41 +361,39 @@ public class JdbcRealmBlock extends JdbcRealm {
 			ps.setTimestamp(2, time);
 			ps.setString(3, username);
 			ps.executeUpdate();
-			
+
 		} catch (SQLException e) {
 			log.error(e.getMessage());
-			throw new PasswordException("Não foi possível alterar a senha. Contate administrador.",e);			
+			throw new PasswordException("Não foi possível alterar a senha. Contate administrador.", e);
 		} finally {
 			JdbcUtils.closeStatement(ps);
 			JdbcUtils.closeConnection(conn);
 		}
 	}
-	
-public void isEqualLastPassword(String username,String passwordText,Connection conn) throws PasswordException {
-		
-		
+
+	public void isEqualLastPassword(String username, String passwordText, Connection conn) throws PasswordException {
+
 		PreparedStatement ps = null;
 		ResultSet rs = null;
 		try {
 			ps = conn.prepareStatement(authenticationQuery);
 			ps.setString(1, username);
-			
+
 			rs = ps.executeQuery();
-			if(rs.next()){
+			if (rs.next()) {
 				String passwordSaved = rs.getString(1);
-				if(UtilPassword.comparePassword(passwordText, passwordSaved)){
+				if (UtilPassword.comparePassword(passwordText, passwordSaved)) {
 					throw new PasswordException("A senha deve ser diferente da última senha salva.");
 				}
 			}
-			
-			
+
 		} catch (SQLException e) {
 			log.error(e.getMessage());
-			throw new PasswordException("Não foi possível validar a senha. Contate administrador.",e);			
+			throw new PasswordException("Não foi possível validar a senha. Contate administrador.", e);
 		} finally {
 			JdbcUtils.closeResultSet(rs);
 			JdbcUtils.closeStatement(ps);
-			
+
 		}
 	}
 
@@ -470,12 +462,25 @@ public void isEqualLastPassword(String username,String passwordText,Connection c
 		return formAuthenticationFilter;
 	}
 
-	public void setFormAuthenticationFilter(
-			FormAuthenticationFilter formAuthenticationFilter) {
+	public void setFormAuthenticationFilter(FormAuthenticationFilter formAuthenticationFilter) {
 		this.formAuthenticationFilter = formAuthenticationFilter;
 	}
 
+	public String getSucessUrlCuidador() {
+		return sucessUrlCuidador;
+	}
 
+	public void setSucessUrlCuidador(String sucessUrlCuidador) {
+		this.sucessUrlCuidador = sucessUrlCuidador;
+	}
+
+	public String getSucessUrlresp() {
+		return sucessUrlresp;
+	}
+
+	public void setSucessUrlresp(String sucessUrlresp) {
+		this.sucessUrlresp = sucessUrlresp;
+	}
 	
 	
 
