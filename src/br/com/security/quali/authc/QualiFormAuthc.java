@@ -29,6 +29,8 @@ public class QualiFormAuthc extends FormAuthenticationFilter {
 	protected String successAuthcAttribute = "sucessAuthc";
 	protected String failAuthcAttribute = "failAuthc";
 	protected String alterPasswordUrl;
+	 private static final String FACES_REDIRECT_XML = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+	            + "<partial-response><redirect url=\"%s\"></redirect></partial-response>";
 
 	protected String timezoneParam = "timezone";
 	private Integer limitDays = 180;
@@ -197,6 +199,19 @@ public class QualiFormAuthc extends FormAuthenticationFilter {
 
 	public void setLimitDays(Integer limitDays) {
 		this.limitDays = limitDays;
+	}
+	@Override
+	protected void redirectToLogin(ServletRequest request, ServletResponse response) throws IOException {
+		 HttpServletRequest req = (HttpServletRequest) request;
+
+	        if ("partial/ajax".equals(req.getHeader("Faces-Request"))) {
+	            response.setContentType("text/xml");
+	            response.setCharacterEncoding("UTF-8");
+	            response.getWriter().printf(FACES_REDIRECT_XML, req.getContextPath() + getLoginUrl());
+	        }
+	        else {
+	            super.redirectToLogin(request, response);
+	        }
 	}
 
 }

@@ -102,7 +102,7 @@ public class JdbcRealmBlock extends JdbcRealm {
 			}
 			if (activation == null) {
 				emailSVC = javax.enterprise.inject.spi.CDI.current().select(Emailsvc.class).get();
-				emailSVC.confirmarEmail(username);
+				emailSVC.confirmarEmail(username,username);
 				throw new BlockedException("Favor ativar a sua conta. Enviamos um novo email solicitando a ativação.");
 			}
 
